@@ -1,5 +1,6 @@
-import ast
+import json
 import os
+import streamlit as st
 
 from llama_index.core.agent import ReActAgent
 from llama_index.core.output_parsers import PydanticOutputParser
@@ -53,7 +54,9 @@ while (prompt := input("Enter a prompt (q to quit): ")) != "q":
         try:
             result = agent.query(prompt)
             next_result = output_pipeline.run(response=result)
-            cleaned_json = ast.literal_eval(str(next_result).replace("assistant:", ""))
+            cleaned_json = str(next_result).replace("assistant:", "").strip()
+            cleaned_json = json.loads(cleaned_json)
+            break
         except Exception as e:
             retries += 1
             print(f'Retry #{retries} | An error occurred: {e}')
