@@ -25,7 +25,7 @@ agent, output_pipeline = initialize_ai_components()
 if st.session_state.history:
     st.subheader("Model History")
     for i, entry in enumerate(st.session_state.history):
-        with st.expander(f"#{i + 1}: {entry['filename']} - {entry['description'][:50]}..."):
+        with st.expander(f"#{i + 1}: {entry['filename']} - {entry['description']}"):
             st.code(entry['code'], language="python")
             if st.button(f"Download {entry['filename']}", key=f"download_{i}"):
                 st.download_button(
@@ -55,13 +55,14 @@ if submitted and prompt:
             # Get result from agent
             result = agent.query(prompt)
             progress_placeholder.info("Processing response...")
+
             # Get formatted result and parse JSON
             next_result = output_pipeline.run(response=result)
             cleaned_json = str(next_result).replace("assistant:", "").strip()
             cleaned_json = json.loads(cleaned_json)
 
             # Success message
-            progress_placeholder.success("Code generated successfully!")
+            progress_placeholder.info("Displaying results...")
 
             # Display the results
             st.subheader("Response")
@@ -76,16 +77,15 @@ if submitted and prompt:
                 file_name=cleaned_json['filename'],
                 mime="text/plain"
             )
+            progress_placeholder.success("Code Generated Successfully!")
 
             try:
                 with open(os.path.join("output", cleaned_json['filename']), "w") as file:
-                    file.write(f"'''\n"
-                               f"{cleaned_json['description']}\n"
-                               f"'''\n")
+                    file.write(f"'''\n{cleaned_json['description']}\n'''\n")
                     file.write(cleaned_json['code'])
-                st.success(f"Code saved to output/{cleaned_json['filename']}")
+                st.success(f"Code saved to 'output/{cleaned_json['filename']}'")
             except Exception as e:
-                st.error(f"Error saving the file: {e}")
+                st.error(f"There was an error generating the file: {e}")
 
             # Add to history
             st.session_state.history.append(cleaned_json)
