@@ -16,12 +16,19 @@ st.title("Multimodal AI Code Generator")
 st.markdown("Enter a prompt and let the AI generate code for you!")
 st.markdown("---")
 
+# Initialize AI components
+st.sidebar.header("⚙ Settings")
+chat_model = st.sidebar.selectbox("Chat / reasoning model",
+                                  ["mistral", "deepseek-r1"],
+                                  index=0)
+code_model = st.sidebar.selectbox("Code‑generation model",
+                                  ["codellama", "deepseek-coder"],
+                                  index=0)
+agent, output_pipeline = initialize_ai_components(chat_model, code_model)
+
 # Initialize session state for storing history
 if 'history' not in st.session_state:
     st.session_state.history = []
-
-# Initialize AI components
-agent, output_pipeline = initialize_ai_components()
 
 # Display history if it isn't empty
 if st.session_state.history:
@@ -63,7 +70,7 @@ if submitted and prompt:
                     progress_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
                     with status_container:
                         st.info(
-                            f"Previous attempt failed with error: {error_context}\n\nRetrying with this new knowledge.")
+                            f"Previous attempt failed with error: \n{error_context}\nRetrying with this new knowledge.")
                 else:
                     progress_placeholder.info("Querying AI agent...")
                 if retries > 0:
@@ -71,6 +78,8 @@ if submitted and prompt:
                                     f"Previous attempt failed with the following error: \n"
                                     f"{error_context} \n"
                                     f"Please generate a correct solution that avoids this error.")
+                    st.info(f"New Prompt Generated: \n"
+                            f"{retry_prompt}")
 
                 # Get result from agent
                 result = agent.query(retry_prompt)

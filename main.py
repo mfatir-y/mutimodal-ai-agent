@@ -18,11 +18,11 @@ from prompts import context, code_parser_template
 
 # Function to initialize the AI components
 @st.cache_resource
-def initialize_ai_components():
+def initialize_ai_components(chat_model: str = "mistral", code_model: str = "codellama"):
     load_dotenv()   # load the .env file for api key
 
-    llm = Ollama(model = 'mistral', request_timeout = 300)
-    code_llm = Ollama(model="codellama")
+    llm = Ollama(model = chat_model, request_timeout = 300)
+    code_llm = Ollama(model = code_model, request_timeout = 300)
 
     parser = LlamaParse(api_key = os.getenv("LLAMACLOUD_API_KEY"), result_type="markdown")
     documents = SimpleDirectoryReader("./data", file_extractor={".pdf": parser}).load_data()
