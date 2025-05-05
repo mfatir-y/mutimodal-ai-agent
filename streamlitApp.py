@@ -38,6 +38,7 @@ with st.form("prompt_form"):
 # Process when form is submitted
 if submitted and prompt:
     # Create a placeholder for displaying progress
+    retry_placeholder = st.empty()
     progress_placeholder = st.empty()
     status_container = st.container()
 
@@ -50,18 +51,10 @@ if submitted and prompt:
         while retries < max_retries and not success:
             try:
                 if retries > 0:
-                    progress_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
-                    retry_prompt = (f"""Original request: 
-                                    {prompt}
-                                    Previous attempt failed with the following error:
-                                    {error_context}
-                                    Please generate a correct solution that avoids this error.""")
+                    retry_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
+                    retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:200]}  \nPlease generate a correct solution that avoids this error.")
                     with status_container:
-                        st.info(f"""Previous attempt failed with error:
-                                {error_context}
-                                Retrying with this new knowledge.
-                                New Prompt Generated:
-                                {retry_prompt}""")
+                        st.info(f"------------- Previous attempt failed with error:  \n{error_context[:200]}  \n------------- Retrying with this new knowledge.  \n------------- New Prompt Generated:  \n{retry_prompt}")
                 else:
                     progress_placeholder.info("Querying AI agent...")
 
@@ -80,12 +73,11 @@ if submitted and prompt:
                 except json.JSONDecodeError:
                     is_json = False
 
-                status_container.empty()
                 progress_placeholder.info("Displaying results...")
 
                 # Display the results
-                st.subheader("Response")
                 if is_json:
+                    st.subheader("Response")
                     st.markdown(f"**Description:** {cleaned_json['description']}")
                     st.code(cleaned_json['code'], language="python")
                     st.markdown(f"**Filename:** {cleaned_json['filename']}")
@@ -96,12 +88,14 @@ if submitted and prompt:
                         file_name=cleaned_json['filename'],
                         mime="text/plain"
                     )
-                elif retries < 3:
+                elif retries < 2:
                     raise ValueError("Response not in JSON format")
                 else:
+                    st.subheader("Response")
                     st.warning("Unable to generate a structured response. Loading raw response.")
                     st.write(cleaned_json)
 
+                status_container.empty()
                 success = True
                 progress_placeholder.success("Code Generated Successfully!")
 
