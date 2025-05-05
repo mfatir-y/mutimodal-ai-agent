@@ -5,6 +5,7 @@ import traceback
 import streamlit as st
 
 from main import initialize_ai_components
+from model_registry import CHAT_MODELS, CODE_MODELS
 
 # Set page configuration
 st.set_page_config(
@@ -18,12 +19,8 @@ st.markdown("---")
 
 # Initialize AI components
 st.sidebar.header("⚙ Settings")
-chat_model = st.sidebar.selectbox("Chat / reasoning model",
-                                  ["mistral", "deepseek-r1"],
-                                  index=0)
-code_model = st.sidebar.selectbox("Code‑generation model",
-                                  ["codellama", "deepseek-coder"],
-                                  index=0)
+chat_model = st.sidebar.selectbox("Chat / Reasoning model", CHAT_MODELS, index=0)
+code_model = st.sidebar.selectbox("Code‑generation model", CODE_MODELS, index=0)
 agent, output_pipeline = initialize_ai_components(chat_model, code_model)
 
 # Initialize session state for storing history
@@ -78,8 +75,7 @@ if submitted and prompt:
                                     f"Previous attempt failed with the following error: \n"
                                     f"{error_context} \n"
                                     f"Please generate a correct solution that avoids this error.")
-                    st.info(f"New Prompt Generated: \n"
-                            f"{retry_prompt}")
+                    st.warning(f"New Prompt Generated: \n{retry_prompt}")
 
                 # Get result from agent
                 result = agent.query(retry_prompt)
