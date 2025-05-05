@@ -80,7 +80,6 @@ if submitted and prompt:
                 except json.JSONDecodeError:
                     is_json = False
 
-                success = True
                 status_container.empty()
                 progress_placeholder.info("Displaying results...")
 
@@ -98,11 +97,12 @@ if submitted and prompt:
                         mime="text/plain"
                     )
                 elif retries < 3:
-                    raise Exception  # TODO: Fix this
+                    raise ValueError("Response not in JSON format")
                 else:
                     st.warning("Unable to generate a structured response. Loading raw response.")
                     st.write(cleaned_json)
 
+                success = True
                 progress_placeholder.success("Code Generated Successfully!")
 
                 try:
@@ -146,7 +146,7 @@ if st.session_state.history:
                         key=f"download_button_{i}"
                     )
         except Exception as e:
-            with st.expander(f"#{i + 1}: {entry[:100]}"):
+            with st.expander(f"#{i + 1}: {entry[:200]}"):
                 st.write(entry)
 
 st.markdown("---")
