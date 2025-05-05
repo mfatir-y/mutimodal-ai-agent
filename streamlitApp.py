@@ -1,6 +1,7 @@
 import json
 import os
 import traceback
+from json import JSONDecodeError
 
 import streamlit as st
 
@@ -95,6 +96,8 @@ if submitted and prompt:
                         file_name=cleaned_json['filename'],
                         mime="text/plain"
                     )
+                elif is_json and retries < 3:
+                    raise json.JSONDecodeError
                 else:
                     st.warning("Unable to generate a structured response. Loading raw response.")
                     st.write(cleaned_json)
@@ -125,6 +128,7 @@ if submitted and prompt:
                         with st.expander("See detailed error"):
                             st.code(error_traceback)
 
+st.markdown("---")
 # Display history if it isn't empty
 if st.session_state.history:
     st.subheader("Model History")
