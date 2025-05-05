@@ -31,7 +31,7 @@ if 'history' not in st.session_state:
 with st.form("prompt_form"):
     prompt = st.text_area("Enter your prompt:",
                           height=100,
-                          placeholder="Example: read the contents of test.py and write a python script that calls the "
+                          placeholder="Example: Read the contents of test.py and write a python script that calls the "
                                       "post endpoint to make a new item")
     submitted = st.form_submit_button("Generate Response")
 
@@ -51,16 +51,17 @@ if submitted and prompt:
             try:
                 if retries > 0:
                     progress_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
-                    retry_prompt = (f"Original request: {prompt} \n"
-                                    f"Previous attempt failed with the following error: \n"
-                                    f"{error_context} \n"
-                                    f"\nPlease generate a correct solution that avoids this error.")
+                    retry_prompt = (f"""Original request: 
+                                    {prompt}
+                                    Previous attempt failed with the following error:
+                                    {error_context}
+                                    Please generate a correct solution that avoids this error.""")
                     with status_container:
-                        st.info(f"Previous attempt failed with error: \n"
-                                f"{error_context} \n"
-                                f"Retrying with this new knowledge. \n"
-                                f"New Prompt Generated: \n"
-                                f"{retry_prompt}")
+                        st.info(f"""Previous attempt failed with error:
+                                {error_context}
+                                Retrying with this new knowledge.
+                                New Prompt Generated:
+                                {retry_prompt}""")
                 else:
                     progress_placeholder.info("Querying AI agent...")
 
@@ -96,8 +97,8 @@ if submitted and prompt:
                         file_name=cleaned_json['filename'],
                         mime="text/plain"
                     )
-                elif is_json and retries < 3:
-                    raise json.JSONDecodeError
+                elif retries < 3:
+                    raise Exception  # TODO: Fix this
                 else:
                     st.warning("Unable to generate a structured response. Loading raw response.")
                     st.write(cleaned_json)
@@ -128,9 +129,9 @@ if submitted and prompt:
                         with st.expander("See detailed error"):
                             st.code(error_traceback)
 
-st.markdown("---")
 # Display history if it isn't empty
 if st.session_state.history:
+    st.markdown("---")
     st.subheader("Model History")
     for i, entry in enumerate(st.session_state.history):
         try:
