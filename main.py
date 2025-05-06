@@ -31,9 +31,10 @@ def initialize_ai_components(chat_model: str = "mistral", code_model: str = "cod
     query_engine = vector_index.as_query_engine(llm=llm)
 
     tools = [QueryEngineTool(query_engine = query_engine,
-                             metadata = ToolMetadata(name = "api_documentation",
-                                                     description = "this gives documentation about code for an API."
-                                                                   " Use this for reading docs for the API.")),
+                             metadata = ToolMetadata(name = "documentation_reader",
+                                                     description= "This gives documentation about uploaded code and/or "
+                                                                  "reference files. Use this for reading documentation "
+                                                                  "or analyzing uploaded files.")),
              code_reader]
 
     agent = ReActAgent.from_tools(tools,

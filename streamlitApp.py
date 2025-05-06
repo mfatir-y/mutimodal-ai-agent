@@ -1,7 +1,6 @@
 import json
 import os
 import traceback
-from json import JSONDecodeError
 
 import streamlit as st
 
@@ -11,11 +10,12 @@ from model_registry import CHAT_MODELS, CODE_MODELS
 # Set page configuration
 st.set_page_config(
     page_title="Multimodal LLM Code Generator",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.title("Multimodal AI Code Generator")
-st.markdown("Enter a prompt and let the AI generate code for you!")
+st.markdown("Generate code from natural language prompts and uploaded files!")
 st.markdown("---")
 
 # Initialize AI components
@@ -23,6 +23,35 @@ st.sidebar.header("⚙ Settings")
 chat_model = st.sidebar.selectbox("Chat / Reasoning model", CHAT_MODELS, index=0)
 code_model = st.sidebar.selectbox("Code‑generation model", CODE_MODELS, index=0)
 agent, output_pipeline = initialize_ai_components(chat_model, code_model)
+
+# Initialize session state for file tracking
+if 'uploaded_files' not in st.session_state:
+    st.session_state.uploaded_files = []
+
+# Add file uploader section
+st.sidebar.markdown("---")
+st.sidebar.header("📁 Reference Files")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload PDF/code file(s) for the AI to reference",
+    type=["pdf", "py", "js", "html", "css", "java", "cpp", "txt"],
+    help="Files will be processed and made available to the AI"
+)
+
+# Handle file upload
+if uploaded_file:
+    data_dir = "data"
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+
+    # Save the file
+    file_path = os.path.join(data_dir, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    # Add to session state if not already there
+    if uploaded_file.name not in st.session_state.uploaded_files:
+        st.session_state.uploaded_files.append(uploaded_file.name)
+        st.sidebar.success(f"File '{uploaded_file.name}' uploaded successfully!")
 
 # Initialize session state for storing history
 if 'history' not in st.session_state:
@@ -52,9 +81,9 @@ if submitted and prompt:
             try:
                 if retries > 0:
                     retry_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
-                    retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:200]}  \nPlease generate a correct solution that avoids this error.")
+                    retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:400]}  \nPlease generate a correct solution that avoids this error.")
                     with status_container:
-                        st.info(f"------------- Previous attempt failed with error:  \n{error_context[:200]}  \n------------- Retrying with this new knowledge.  \n------------- New Prompt Generated:  \n{retry_prompt}")
+                        st.info(f"------------- Previous attempt failed with error:  \n{error_context[:400]}  \n------------- Retrying with this new knowledge.")
                 else:
                     progress_placeholder.info("Querying AI agent...")
 
@@ -75,7 +104,7 @@ if submitted and prompt:
 
                 progress_placeholder.info("Displaying results...")
 
-                # Display the results
+                # Display the results if output was in desired JSON format or (maybe) retry again
                 if is_json:
                     st.subheader("Response")
                     st.markdown(f"**Description:** {cleaned_json['description']}")
@@ -89,7 +118,7 @@ if submitted and prompt:
                         mime="text/plain"
                     )
                 elif retries < 2:
-                    raise ValueError("Response not in JSON format")
+                    raise ValueError("Response not in desired format {'description', 'code', 'filename'}")
                 else:
                     st.subheader("Response")
                     st.warning("Unable to generate a structured response. Loading raw response.")
@@ -100,12 +129,15 @@ if submitted and prompt:
                 progress_placeholder.success("Code Generated Successfully!")
 
                 try:
+                    if not os.path.exists('output'):
+                        os.makedirs('output')
+
                     with open(os.path.join("output", cleaned_json['filename']), "w") as file:
                         file.write(f"'''\n{cleaned_json['description']}\n'''\n")
                         file.write(cleaned_json['code'])
                     st.success(f"Code saved to 'output/{cleaned_json['filename']}'")
                 except Exception as e:
-                    st.error(f"There was an error generating the file: {e}")
+                    st.error(f"There was an error generating the file: {e[:200]}")
 
                 # Add to history
                 st.session_state.history.append(cleaned_json)
@@ -114,7 +146,7 @@ if submitted and prompt:
                 retries += 1
                 error_msg = str(e)
                 error_traceback = traceback.format_exc()
-                error_context = f"{error_msg}\n\nDetails: {error_traceback[-100:]}"
+                error_context = f"{error_msg}\n\nDetails: {error_traceback[-200:]}"
 
                 if retries >= max_retries:
                     progress_placeholder.error(f"Failed after {max_retries} attempts")
