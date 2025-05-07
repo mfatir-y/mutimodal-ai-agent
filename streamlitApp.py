@@ -34,7 +34,6 @@ st.sidebar.header("📁 Reference Files")
 uploaded_file = st.sidebar.file_uploader(
     "Upload PDF/code file(s) for the AI to reference",
     type=["pdf", "py", "js", "html", "css", "java", "cpp", "txt"],
-    help="Files will be processed and made available to the AI"
 )
 
 # Handle file upload
@@ -81,9 +80,9 @@ if submitted and prompt:
             try:
                 if retries > 0:
                     retry_placeholder.warning(f"Retry attempt {retries}/{max_retries}...")
-                    retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:400]}  \nPlease generate a correct solution that avoids this error.")
+                    retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:400]}...  \nPlease generate a correct solution that avoids this error.")
                     with status_container:
-                        st.info(f"------------- Previous attempt failed with error:  \n{error_context[:400]}  \n------------- Retrying with this new knowledge.")
+                        st.info(f"------------- Previous attempt failed with error:  \n{error_context[:400]}...  \n------------- Retrying with this new knowledge.")
                 else:
                     progress_placeholder.info("Querying AI agent...")
 
@@ -99,7 +98,7 @@ if submitted and prompt:
                 try:
                     cleaned_json = json.loads(cleaned_json)
                     is_json = True
-                except json.JSONDecodeError:
+                except Exception:
                     is_json = False
 
                 progress_placeholder.info("Displaying results...")
@@ -118,7 +117,7 @@ if submitted and prompt:
                         mime="text/plain"
                     )
                 elif retries < 2:
-                    raise ValueError("Response not in desired format {'description', 'code', 'filename'}")
+                    raise ValueError("Response not in desired format.")
                 else:
                     st.subheader("Response")
                     st.warning("Unable to generate a structured response. Loading raw response.")
@@ -137,16 +136,29 @@ if submitted and prompt:
                         file.write(cleaned_json['code'])
                     st.success(f"Code saved to 'output/{cleaned_json['filename']}'")
                 except Exception as e:
-                    st.error(f"There was an error generating the file: {e[:200]}")
+                    st.error(f"There was an error generating the file: {e[:200]}...")
 
                 # Add to history
                 st.session_state.history.append(cleaned_json)
 
             except Exception as e:
+                try:
+                    with st.expander(f"Response from attempt {retries + 1}"):
+                        st.code(cleaned_json)
+                except:
+                    try:
+                        with st.expander(f"Response from attempt {retries + 1}"):
+                            st.code(next_result)
+                    except:
+                        try:
+                            with st.expander(f"Response from attempt {retries + 1}"):
+                                st.code(result)
+                        except:
+                            pass
                 retries += 1
                 error_msg = str(e)
                 error_traceback = traceback.format_exc()
-                error_context = f"{error_msg}\n\nDetails: {error_traceback[-200:]}"
+                error_context = f"{error_msg}\n\nDetails: {error_traceback[-200:]}..."
 
                 if retries >= max_retries:
                     progress_placeholder.error(f"Failed after {max_retries} attempts")
