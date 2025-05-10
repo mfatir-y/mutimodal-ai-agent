@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 from code_reader import code_reader
 from prompts import context, code_parser_template
+from model_evaluator import ModelEvaluator
 
 
 # Function to initialize the AI components
@@ -50,5 +51,8 @@ def initialize_ai_components(chat_model: str = "mistral", code_model: str = "cod
     parser = PydanticOutputParser(CodeOutput)
     json_prompt_template = PromptTemplate(parser.format(code_parser_template))
     output_pipeline = QueryPipeline(chain = [json_prompt_template, llm])
-    return agent, output_pipeline
+
+    model_evaluator = ModelEvaluator()
+
+    return agent, output_pipeline, model_evaluator
 
