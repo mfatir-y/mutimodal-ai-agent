@@ -40,7 +40,7 @@ def initialize_ai_components(chat_model: str = "mistral", code_model: str = "cod
 
     agent = ReActAgent.from_tools(tools,
                                   llm=code_llm,
-                                  verbose=True,
+                                  verbose=False,
                                   context=context)
 
     class CodeOutput(BaseModel):

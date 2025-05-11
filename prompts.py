@@ -1,7 +1,13 @@
 context = ("Purpose: The primary role of this agent is to assist users by analyzing code. It should be able to generate "
            "code and answer questions about code provided.")
 
-code_parser_template = ("Parse the response from the previous LLM into a description and a string of valid code, "
-                        "also come up with a valid filename that could be saved which doesn't contain any special "
-                        "characters. Here is the response: {response}. You should parse this in the following "
-                        "JSON Format: ")
+code_parser_template = ("You are a JSON-only formatter. "
+                        "Tasks: 1. Read the raw LLM answer. "
+                        "2. Produce exactly this object: "
+                        "{"
+                        "'description': <few-sentences summary>, "
+                        "'code': <Python code as a string>, "
+                        "'filename': <CamelCase or snake_case filename without any special characters>,"
+                        "} "
+                        "Output rules (strict):"
+                        "Return only valid JSON—no ``` fences, no extra keys, no comments.")
