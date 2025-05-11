@@ -183,11 +183,11 @@ def render_evaluation_dashboard():
     with tab2:
         _plot_model_metrics(df, "code_model")
 
-    # Recent evaluations
+    # Last 10 Recent evaluations
     st.subheader("Recent Evaluations")
     recent_df = df.sort_values("timestamp", ascending=False).head(10)
 
-    for _, row in recent_df.iterrows():
+    for _, row in recent_df[:10].iterrows():
         with st.expander(f"{row['timestamp']} - {row['chat_model']}/{row['code_model']}"):
             col1, col2 = st.columns(2)
 
@@ -207,9 +207,9 @@ def render_evaluation_dashboard():
                     st.write("**Code Metrics:**")
                     for key, value in row['code_metrics'].items():
                         if isinstance(value, float):
-                            st.write(f"- {key}: {value:.2f}")
+                            st.write(f"- {key.replace('_', ' ').title()}: {value:.2f}")
                         else:
-                            st.write(f"- {key}: {value}")
+                            st.write(f"- {key.replace('_', ' ').title()}: {value}")
 
 
 def _plot_model_metrics(df: pd.DataFrame, model_col: str):

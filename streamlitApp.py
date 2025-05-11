@@ -1,12 +1,14 @@
 import json
 import os
 import traceback
+import uuid
 
 import streamlit as st
 
 from main import initialize_ai_components
 from model_registry import CHAT_MODELS, CODE_MODELS
 from model_evaluator import render_evaluation_dashboard
+from feedback_manager import FeedbackManager, render_feedback_dashboard
 
 # Set page configuration
 st.set_page_config(
@@ -24,9 +26,16 @@ chat_model = st.sidebar.selectbox("Chat / Reasoning model", CHAT_MODELS, index=0
 code_model = st.sidebar.selectbox("Code‑generation model", CODE_MODELS, index=0)
 agent, output_pipeline, model_evaluator = initialize_ai_components(chat_model, code_model)
 
+# Initialize feedback manager
+feedback_manager = FeedbackManager()
+
 # Initialize session state for file tracking
 if 'uploaded_files' not in st.session_state:
     st.session_state.uploaded_files = []
+
+# Initialize session state for IDs
+if 'code_ids' not in st.session_state:
+    st.session_state.code_ids = {}
 
 # Add file uploader section
 st.sidebar.markdown("---")
@@ -56,8 +65,8 @@ if uploaded_file:
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-# Create tabs for generation and evaluation
-tab1, tab2 = st.tabs(["Code Generation", "Model Evaluation"])
+# Create tabs for generation, evaluation, and feedback
+tab1, tab2, tab3 = st.tabs(["Code Generation", "Model Evaluation", "User Feedback"])
 
 with tab1:
     with st.form("prompt_form"):
@@ -88,7 +97,7 @@ with tab1:
                     if retries > 0:
                         retry_prompt = (f"Original request: {prompt}  \nPrevious attempt failed with the following error:  \n{error_context[:400]}...  \nPlease generate a correct solution that avoids this error.")
                         with status_container:
-                            st.info(f"------------- Previous attempt failed with error:  \n{error_context[:400]}...  \n------------- Retrying with this new knowledge.")
+                            st.info(f"**Previous attempt failed with error:**  \n{error_context[:400]}...  \n**Retrying with this new knowledge.**")
 
                         # Record retry in evaluation
                         model_evaluator.record_retry(error_context)
@@ -115,23 +124,16 @@ with tab1:
                     if is_json:
                         st.subheader("Response")
                         st.markdown(f"**Description:** {cleaned_json['description']}")
-                        st.code(cleaned_json['code'], language="python")
-                        st.markdown(f"**Filename:** {cleaned_json['filename']}")
-
-                        # Record success in evaluation
-                        completion_time = model_evaluator.record_success(cleaned_json)
-
-                        # Add a download button
-                        st.download_button(
-                            label=f"Download {cleaned_json['filename']}",
-                            data=f"'''{cleaned_json['description']}'''\n{cleaned_json['code']}",
-                            file_name=cleaned_json['filename'],
-                            mime="text/plain"
-                        )
-
-                        # Show completion time
-                        st.info(f"Code generated in {completion_time:.2f} seconds")
-
+                        if cleaned_json['code']:
+                            st.code(cleaned_json['code'], language="python")
+                            st.markdown(f"**Filename:** {cleaned_json['filename']}")
+                            # Add a download button
+                            st.download_button(
+                                label=f"Download {cleaned_json['filename']}",
+                                data=f"'''{cleaned_json['description']}'''\n{cleaned_json['code']}",
+                                file_name=cleaned_json['filename'],
+                                mime="text/plain"
+                            )
                     elif retries < 2:
                         raise ValueError("Response not in desired format.")
                     else:
@@ -141,6 +143,30 @@ with tab1:
 
                         # Record partial success in evaluation
                         model_evaluator.record_success({"code": str(cleaned_json)})
+
+                    # Record success in evaluation
+                    completion_time = model_evaluator.record_success(cleaned_json)
+
+                    # Generate a unique ID for this code generation
+                    code_id = f"code_{uuid.uuid4().hex[:8]}"
+                    st.session_state.code_ids[len(st.session_state.history)] = code_id
+
+                    # Add feedback section
+                    st.markdown("#### Was this response helpful?")
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    feedback_comment = st.text_area("Additional comments (optional):", key=f"comment_{code_id}")
+
+                    # Create feedback buttons
+                    for i, col in enumerate([col1, col2, col3, col4, col5], 1):
+                        if col.button(f"{i*'⭐'}", key=f"rating_{i}_{code_id}"):
+                            print(feedback_comment)
+                            feedback_success = feedback_manager.record_feedback(
+                                i, code_id, feedback_comment, chat_model, code_model
+                            )
+                            if feedback_success:
+                                st.success("Thank you for your feedback!")
+                            else:
+                                st.error("Error recording feedback. Please try again.")
 
                     status_container.empty()
                     success = True
@@ -156,6 +182,9 @@ with tab1:
                         st.success(f"Code saved to 'output/{cleaned_json['filename']}'")
                     except Exception as e:
                         st.error(f"There was an error generating the file: {e[:200]}...")
+
+                    # Show completion time
+                    st.info(f"Code generated in {completion_time:.2f} seconds")
 
                     # Add to history
                     st.session_state.history.append(cleaned_json)
@@ -183,7 +212,7 @@ with tab1:
                     if retries >= max_retries:
                         progress_placeholder.error(f"Failed after {max_retries} attempts")
                         with status_container:
-                            st.error(f"An error occurred: {error_msg} \nPlease try again with a different prompt.")
+                            st.error(f"**An error occurred:** {error_msg[:300]}  \n**Please try again with a different prompt.**")
                             with st.expander("See detailed error"):
                                 st.code(error_traceback)
 
@@ -196,6 +225,11 @@ with tab1:
         st.subheader("Model History")
         for i, entry in enumerate(st.session_state.history):
             try:
+                # Get code ID or create one if it doesn't exist
+                if i not in st.session_state.code_ids:
+                    st.session_state.code_ids[i] = f"history_{uuid.uuid4().hex[:8]}"
+                code_id = st.session_state.code_ids[i]
+
                 with st.expander(f"#{i + 1}: {entry['filename']} - {entry['description']}"):
                     st.code(entry['code'], language="python")
                     if st.button(f"Download {entry['filename']}", key=f"download_{i}"):
@@ -206,6 +240,14 @@ with tab1:
                             mime="text/plain",
                             key=f"download_button_{i}"
                         )
+
+                    # Add feedback for historical items
+                    st.write("Rate this code:")
+                    feedback_cols = st.columns(5)
+                    for j, fcol in enumerate(feedback_cols, 1):
+                        if fcol.button(f"{j}⭐", key=f"history_rating_{j}_{code_id}"):
+                            feedback_manager.record_feedback(j, code_id, "", chat_model, code_model)
+                            st.success("Feedback recorded!")
             except Exception as e:
                 with st.expander(f"#{i + 1}: {entry[:200]}"):
                     st.write(entry)
@@ -213,6 +255,10 @@ with tab1:
 with tab2:
     # Render the evaluation dashboard
     render_evaluation_dashboard()
+
+with tab3:
+    # Render the feedback dashboard
+    render_feedback_dashboard()
 
 st.markdown("---")
 st.markdown("Built with Ollama, LlamaIndex, LlamaCloud and Streamlit")
