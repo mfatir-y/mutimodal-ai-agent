@@ -35,6 +35,29 @@ class FeedbackManager:
             with open(self.log_path, 'w') as f:
                 json.dump([], f)
 
+    def is_feedback_recorded(self, code_id: str) -> bool:
+        """
+        Check if feedback has already been recorded for a specific code ID.
+
+        Args:
+            code_id: Identifier for the code to check
+
+        Returns:
+            bool: True if feedback has already been recorded for this code ID
+        """
+        try:
+            with open(self.log_path, 'r') as f:
+                feedbacks = json.load(f)
+
+            # Check if any feedback entry has this code_id
+            for entry in feedbacks:
+                if entry.get("code_id") == code_id:
+                    return True
+            return False
+        except Exception as e:
+            print(f"Error checking feedback existence: {e}")
+            return False
+
     def record_feedback(self,
                         feedback_rating: int,
                         code_id: str,
@@ -54,6 +77,10 @@ class FeedbackManager:
         Returns:
             bool: True if feedback was successfully recorded
         """
+        # Check if feedback already exists for this code_id
+        if self.is_feedback_recorded(code_id):
+            return True
+
         feedback_entry = {
             "timestamp": datetime.now().isoformat(),
             "code_id": code_id,
@@ -71,7 +98,6 @@ class FeedbackManager:
                 json.dump(feedbacks, f, indent=2)
             return True
         except Exception as e:
-            print(f"Error saving the feedback: {e}")
             return False
 
     @classmethod

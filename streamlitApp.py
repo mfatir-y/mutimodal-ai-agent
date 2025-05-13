@@ -37,6 +37,10 @@ if 'uploaded_files' not in st.session_state:
 if 'code_ids' not in st.session_state:
     st.session_state.code_ids = {}
 
+# Initialize session state for storing history
+if 'history' not in st.session_state:
+    st.session_state.history = []
+
 # Add file uploader section
 st.sidebar.markdown("---")
 st.sidebar.header("📁 Reference Files")
@@ -60,10 +64,6 @@ if uploaded_file:
     if uploaded_file.name not in st.session_state.uploaded_files:
         st.session_state.uploaded_files.append(uploaded_file.name)
         st.sidebar.success(f"File '{uploaded_file.name}' uploaded successfully!")
-
-# Initialize session state for storing history
-if 'history' not in st.session_state:
-    st.session_state.history = []
 
 # Create tabs for generation, evaluation, and feedback
 tab1, tab2, tab3 = st.tabs(["Code Generation", "Model Evaluation", "User Feedback"])
@@ -151,23 +151,6 @@ with tab1:
                     code_id = f"code_{uuid.uuid4().hex[:8]}"
                     st.session_state.code_ids[len(st.session_state.history)] = code_id
 
-                    # Add feedback section
-                    st.markdown("#### Was this response helpful?")
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    feedback_comment = st.text_area("Additional comments (optional):", key=f"comment_{code_id}")
-
-                    # Create feedback buttons
-                    for i, col in enumerate([col1, col2, col3, col4, col5], 1):
-                        if col.button(f"{i*'⭐'}", key=f"rating_{i}_{code_id}"):
-                            print(feedback_comment)
-                            feedback_success = feedback_manager.record_feedback(
-                                i, code_id, feedback_comment, chat_model, code_model
-                            )
-                            if feedback_success:
-                                st.success("Thank you for your feedback!")
-                            else:
-                                st.error("Error recording feedback. Please try again.")
-
                     status_container.empty()
                     success = True
                     progress_placeholder.success("Code Generated Successfully!")
@@ -189,6 +172,19 @@ with tab1:
                     # Add to history
                     st.session_state.history.append(cleaned_json)
 
+                    # Add feedback section
+                    st.markdown("#### Was this response helpful?")
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    feedback_comment = st.text_area("Additional comments (optional):", key=f"comment_{code_id}")
+                    for i, col in enumerate([col1, col2, col3, col4, col5], 1):
+                        if col.button(f"{i * '⭐'}", key=f"rating_{i}_{code_id}"):
+                            feedback_success = feedback_manager.record_feedback(
+                                i, code_id, feedback_comment, chat_model, code_model
+                            )
+                            if feedback_success:
+                                st.success("Thank you for your feedback!")
+                            else:
+                                st.error("Error recording feedback. Please try again.")
                 except Exception as e:
                     try:
                         with st.expander(f"Response from attempt {retries + 1}"):
@@ -242,12 +238,20 @@ with tab1:
                         )
 
                     # Add feedback for historical items
-                    st.write("Rate this code:")
-                    feedback_cols = st.columns(5)
-                    for j, fcol in enumerate(feedback_cols, 1):
-                        if fcol.button(f"{j}⭐", key=f"history_rating_{j}_{code_id}"):
-                            feedback_manager.record_feedback(j, code_id, "", chat_model, code_model)
-                            st.success("Feedback recorded!")
+                    if feedback_manager.is_feedback_recorded(code_id):
+                        st.success("Feedback already recorded for this response.")
+                    else:
+                        st.write("Rate this code:")
+                        feedback_cols = st.columns(5)
+                        for j, fcol in enumerate(feedback_cols, 1):
+                            if fcol.button(f"{j * '⭐'}", key=f"history_rating_{j}_{code_id}"):
+                                feedback_success = feedback_manager.record_feedback(
+                                    j, code_id, "", chat_model,code_model
+                                )
+                                if feedback_success:
+                                    st.success("Feedback recorded!")
+                                else:
+                                    st.error("Error recording feedback. Please try again.")
             except Exception as e:
                 with st.expander(f"#{i + 1}: {entry[:200]}"):
                     st.write(entry)
