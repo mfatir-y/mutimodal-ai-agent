@@ -1,5 +1,7 @@
 import os
 import streamlit as st
+import json
+from typing import Dict, Any, Optional, Union, List
 
 from llama_index.core.agent import ReActAgent
 from llama_index.core.output_parsers import PydanticOutputParser
@@ -16,6 +18,51 @@ from code_reader import code_reader
 from prompts import context, code_parser_template
 from model_evaluator import ModelEvaluator
 
+# Global LLM instances
+_chat_llm = None
+_code_llm = None
+
+def get_llm(model_name: str = "mistral") -> Ollama:
+    """Get or create an LLM instance."""
+    global _chat_llm, _code_llm
+    
+    if model_name == "codellama":
+        if _code_llm is None:
+            _code_llm = Ollama(model=model_name, request_timeout=300)
+        return _code_llm
+    else:
+        if _chat_llm is None:
+            _chat_llm = Ollama(model=model_name, request_timeout=300)
+        return _chat_llm
+
+def query_llm(prompt: str, 
+              model: str = "mistral", 
+              response_format: Optional[str] = None) -> Union[str, Dict[str, Any], List[str]]:
+    """
+    Centralized function to query the LLM.    
+    Args: prompt: The prompt to send to the LLM
+          model: The model to use (default: "mistral")
+          response_format: Optional format specification ("json" or "json_array")
+    Returns: Union[str, Dict, List]: The LLM's response in the specified format
+    """
+    llm = get_llm(model)
+    
+    try:
+        response = llm.complete(prompt)
+        result = response.text
+        
+        if response_format == "json":
+            return json.loads(result)
+        elif response_format == "json_array":
+            return json.loads(result)
+        return result
+    except Exception as e:
+        print(f"Error querying LLM: {e}")
+        if response_format == "json":
+            return {"error": str(e)}
+        elif response_format == "json_array":
+            return [f"Error: {str(e)}"]
+        return f"Error: {str(e)}"
 
 # Function to initialize the AI components
 @st.cache_resource

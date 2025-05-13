@@ -8,6 +8,8 @@ from typing import Dict, List, Any, Optional
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+from feedback_analyzer import FeedbackAnalyzer
+from prompts import feedback_analysis_prompt, code_improvement_prompt, feedback_categorization_prompt
 
 
 class FeedbackManager:
@@ -63,7 +65,10 @@ class FeedbackManager:
                         code_id: str,
                         feedback_comment: Optional[str] = None,
                         chat_model: Optional[str] = None,
-                        code_model: Optional[str] = None) -> bool:
+                        code_model: Optional[str] = None,
+                        code: Optional[str] = None,
+                        prompt: Optional[str] = None,
+                        code_description: Optional[str] = None) -> bool:
         """
         Record user feedback for a generated code.
 
@@ -73,6 +78,9 @@ class FeedbackManager:
             feedback_comment: Optional user comment
             chat_model: Chat model used
             code_model: Code model used
+            code: The generated code being rated
+            prompt: The prompt that generated the code
+            code_description: Description of what the code does
 
         Returns:
             bool: True if feedback was successfully recorded
@@ -87,7 +95,10 @@ class FeedbackManager:
             "rating": feedback_rating,
             "comment": feedback_comment if feedback_comment else "",
             "chat_model": chat_model,
-            "code_model": code_model
+            "code_model": code_model,
+            "code": code,
+            "prompt": prompt,
+            "code_description": code_description
         }
 
         try:
@@ -139,7 +150,74 @@ def render_feedback_dashboard():
         positive_percent = (positive_feedback / total_feedback) * 100 if total_feedback > 0 else 0
         st.metric("Positive Feedback", f"{positive_percent:.1f}%")
 
-    # Rating distribution
+    # Add LLM Analysis Section
+    st.subheader("AI-Powered Feedback Analysis")    
+    analyzer = FeedbackAnalyzer()
+    
+    analysis_tab, categories_tab, suggestions_tab = st.tabs([
+        "Feedback Insights", 
+        "Feedback Categories",
+        "Improvement Suggestions"
+    ])
+    
+    with analysis_tab:
+        if st.button("Generate Feedback Insights"):
+            with st.spinner("Analyzing feedback..."):
+                analysis_results = analyzer.analyze_feedback(feedbacks)
+                
+                if "error" not in analysis_results:
+                    # Display common themes
+                    st.write("### Common Themes")
+                    for theme in analysis_results.get("common_themes", []):
+                        st.write(f"- {theme}")
+                        
+                    # Display areas for improvement
+                    st.write("### Areas for Improvement")
+                    for area in analysis_results.get("areas_for_improvement", []):
+                        st.write(f"- {area}")
+                        
+                    # Display what users like
+                    st.write("### What Users Like")
+                    for like in analysis_results.get("what_users_like", []):
+                        st.write(f"- {like}")
+                        
+                    # Display suggestions
+                    st.write("### Suggestions for Improvement")
+                    for suggestion in analysis_results.get("suggestions", []):
+                        st.write(f"- {suggestion}")
+                else:
+                    st.error(f"Analysis failed: {analysis_results['error']}")
+    
+    with categories_tab:
+        if st.button("Categorize Feedback"):
+            with st.spinner("Categorizing feedback..."):
+                categories = analyzer.categorize_feedback(feedbacks)
+                
+                for category, comments in categories.items():
+                    with st.expander(f"{category} ({len(comments)})"):
+                        for comment in comments:
+                            st.write(f"- {comment}")
+    
+    with suggestions_tab:
+        # Allow users to select specific feedback for detailed analysis
+        if feedbacks:
+            selected_feedback = st.selectbox("**Select feedback to analyze**",
+                                             options=range(len(feedbacks)),
+                                             format_func=lambda x: f"Rating: {feedbacks[x]['rating']} - Comment: {feedbacks[x]['comment'][:50] + '...' if feedbacks[x]['comment'] else 'No comment'}")
+            
+            if st.button("Generate Improvement Suggestions"):
+                with st.spinner("Generating suggestions..."):
+                    feedback_entry = feedbacks[selected_feedback]
+                    suggestions = analyzer.generate_improvement_suggestions(
+                        feedback_entry.get("code", ""),  # You might need to add code storage in feedback
+                        feedback_entry["comment"]
+                    )
+                    
+                    st.write("### Suggested Improvements")
+                    for suggestion in suggestions:
+                        st.write(f"{suggestion}")
+
+    # Continue with existing visualizations
     st.subheader("Rating Distribution")
     rating_counts = df["rating"].value_counts().sort_index()
     fig, ax = plt.subplots(figsize=(10, 5))

@@ -51,9 +51,9 @@ if 'feedback_submitted' not in st.session_state:
 
 
 # Function to handle feedback submission
-def submit_feedback(rating, code_id, comment, chat_model, code_model):
+def submit_feedback(rating, code_id, comment, chat_model, code_model, code=None, prompt=None, description=None):
     feedback_success = feedback_manager.record_feedback(
-        rating, code_id, comment, chat_model, code_model
+        rating, code_id, comment, chat_model, code_model, code=code, prompt=prompt, code_description=description
     )
     if feedback_success:
         st.session_state.feedback_submitted = True
@@ -235,8 +235,21 @@ with tab1:
             col1, col2, col3, col4, col5 = st.columns(5)
             for i, col in enumerate([col1, col2, col3, col4, col5], 1):
                 if col.button(f"{i * '⭐'}", key=f"current_rating_{i}"):
+                    # Get the current code details from the last result
+                    current_code = None
+                    current_prompt = None
+                    current_description = None
+                    if st.session_state.history:
+                        last_result = st.session_state.history[-1]
+                        current_code = last_result.get('code')
+                        current_description = last_result.get('description')
+                        
                     feedback_success = submit_feedback(
-                        i, st.session_state.current_code_id, feedback_comment, chat_model, code_model
+                        i, st.session_state.current_code_id, feedback_comment,
+                        chat_model, code_model,
+                        code=current_code,
+                        prompt=prompt,  # Using the prompt from the form
+                        description=current_description
                     )
                     if feedback_success:
                         st.success("Thank you for your feedback!")
@@ -273,10 +286,15 @@ with tab1:
                     else:
                         st.write("Rate this code:")
                         feedback_cols = st.columns(5)
+                        feedback_comment = st.text_area("Additional comments (optional):", key=f"history_comment_{i}")
                         for j, fcol in enumerate(feedback_cols, 1):
                             if fcol.button(f"{j * '⭐'}", key=f"history_rating_{j}_{code_id}"):
-                                feedback_success = feedback_manager.record_feedback(
-                                    j, code_id, "", chat_model, code_model
+                                feedback_success = submit_feedback(
+                                    j, code_id, feedback_comment,
+                                    chat_model, code_model,
+                                    code=entry['code'],
+                                    prompt='Unavailable',
+                                    description=entry['description']
                                 )
                                 if feedback_success:
                                     st.success("Feedback recorded!")
