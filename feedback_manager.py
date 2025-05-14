@@ -209,16 +209,19 @@ def render_feedback_dashboard(model: str = "mistral"):
                                              options=range(len(feedbacks)),
                                              format_func=lambda x: f"Rating: {feedbacks[x]['rating']} - Comment: {feedbacks[x]['comment'][:50] + '...' if feedbacks[x]['comment'] else 'No comment'}")
             
-            if st.button("Generate suggestions with improvements for the selected feedback"):
+            if st.button("Generate suggestions for improvement of the selected feedback"):
                 with st.spinner("Generating suggestions..."):
                     feedback_entry = feedbacks[selected_feedback]
                     suggestions = analyzer.generate_improvement_suggestions(feedback_entry.get("code", ""), feedback_entry.get("code_description", ""), feedback_entry.get("comment", ""), feedback_entry.get("prompt", ""))
-                    if "error" in suggestions:
-                        st.error(f"An error occurred while generating suggestions. Please try again.  \nError: {suggestions['error']}")
-                    else:
-                        st.write("### Suggested Improvements")
-                        for suggestion in suggestions:
-                            st.write(f"{suggestion}")
+                    try:
+                        if "error" in suggestions:
+                            st.error(f"An error occurred while generating suggestions. Please try again.  \nError: {suggestions['error']}")
+                        else:
+                            st.write("### Suggested Improvements")
+                            for suggestion in suggestions['suggestions']:
+                                st.write(f"- {suggestion}")
+                    except Exception as e:
+                        st.error(f"An error occurred while generating suggestions. Please try again.  \nError Summary: {e}")
 
     st.markdown("---")
     st.subheader("Rating Distribution")

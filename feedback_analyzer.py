@@ -49,7 +49,8 @@ class FeedbackAnalyzer:
                       f"{code or 'Not provided'}\n"
                       f"FEEDBACK GIVEN ON THE RESPONSE:\n"
                       f"{feedback or 'Not provided'}\n"
-                      f"Provide an improved response based on the prompt and feedback. Return a json object with only the keys 'suggestions'")
+                      f"Provide guidance on how to improve the response based on the prompt and feedback. "
+                      "Return a json object with key 'suggestions' with a list of suggestions as values")
         return query_llm(full_prompt, self.model)
 
     def categorize_feedback(self, feedback_entries: List[Dict[str, Any]]) -> Dict[str, List[str]]:
