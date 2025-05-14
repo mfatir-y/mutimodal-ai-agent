@@ -122,7 +122,7 @@ class FeedbackManager:
             return []
 
 
-def render_feedback_dashboard():
+def render_feedback_dashboard(model: str = "mistral"):
     """Render the feedback analysis dashboard in Streamlit."""
     st.header("User Feedback Dashboard")
     feedbacks = FeedbackManager.load_feedback()
@@ -149,7 +149,7 @@ def render_feedback_dashboard():
 
     # Add LLM Analysis Section
     st.subheader("AI-Powered Feedback Analysis")    
-    analyzer = FeedbackAnalyzer()
+    analyzer = FeedbackAnalyzer(model)
     
     analysis_tab, categories_tab, suggestions_tab = st.tabs([
         "Feedback Insights", 
@@ -199,7 +199,7 @@ def render_feedback_dashboard():
                     try:    
                         with st.expander(f"{category} ({len(comments)})"):
                             for comment in comments:
-                                st.write(f"- {comment}")
+                                st.write(f"- Code ID: {comment['code_id']}, Rating: {comment['rating']}, Comment: {comment['comment'] if 'comment' in comment and comment['comment'] else 'No comment'}")
                     except Exception as e:
                         st.error(f"Categorization failed: {e}")
     
@@ -212,14 +212,13 @@ def render_feedback_dashboard():
             if st.button("Generate suggestions with improvements for the selected feedback"):
                 with st.spinner("Generating suggestions..."):
                     feedback_entry = feedbacks[selected_feedback]
-                    suggestions = analyzer.generate_improvement_suggestions(
-                        feedback_entry.get("code", ""),
-                        feedback_entry.get("comment", "")
-                    )
-                    
-                    st.write("### Suggested Improvements")
-                    for suggestion in suggestions:
-                        st.write(f"{suggestion}")
+                    suggestions = analyzer.generate_improvement_suggestions(feedback_entry.get("code", ""), feedback_entry.get("code_description", ""), feedback_entry.get("comment", ""), feedback_entry.get("prompt", ""))
+                    if "error" in suggestions:
+                        st.error(f"An error occurred while generating suggestions. Please try again.  \nError: {suggestions['error']}")
+                    else:
+                        st.write("### Suggested Improvements")
+                        for suggestion in suggestions:
+                            st.write(f"{suggestion}")
 
     st.markdown("---")
     st.subheader("Rating Distribution")

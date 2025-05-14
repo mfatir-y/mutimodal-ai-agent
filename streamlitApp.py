@@ -305,12 +305,10 @@ with tab1:
                     st.write(entry)
 
 with tab2:
-    # Render the evaluation dashboard
     render_evaluation_dashboard()
 
 with tab3:
-    # Render the feedback dashboard
-    render_feedback_dashboard()
+    render_feedback_dashboard(chat_model)
 
 st.markdown("---")
 st.markdown("Built with Ollama, LlamaIndex, LlamaCloud and Streamlit")
