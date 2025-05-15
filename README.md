@@ -1,15 +1,17 @@
 # AI Agent with Ollama Integration
 
-This project implements an intelligent AI agent system that leverages Ollama models for code analysis, documentation reading, and interactive assistance. The system combines various LLM capabilities with specialized tools for enhanced functionality.
+A powerful RAG-based (Retrieval-Augmented Generation) code generation platform that leverages local Large Language Models (LLMs) to turn natural language prompts into functional code, with built-in document understanding, feedback collection, and model evaluation systems.
+
 
 ## 🚀 Features
 
-- **Multiple LLM Support**: Integrates with different Ollama models (Mistral and CodeLlama)
+- **Multiple LLM Support**: Integrates with different Ollama models
 - **Document Analysis**: Processes and analyzes PDF documents using LlamaParse
 - **Code Reading & Analysis**: Specialized tools for code comprehension
 - **Interactive Interface**: Streamlit-based web interface for easy interaction
 - **Vector Search**: Efficient document indexing and retrieval using vector store
-- **Feedback Analysis**: Built-in feedback management and analysis system
+- **Feedback Analysis**: Built-in feedback management and AI analysis system
+- **RAG System for Generation**: Context-aware code generation that references uploaded materials
 
 ## 📋 Requirements
 
@@ -20,12 +22,13 @@ This project implements an intelligent AI agent system that leverages Ollama mod
 ### Key Dependencies
 
 ```txt
-streamlit>=1.22.0
-llama-index-core==0.10.25
-llama-index-llms-ollama==0.1.2
-pandas>=2.0.0
-torch==2.2.2
-transformers==4.39.2
+ollama
+streamlit
+llama-index
+transformers
+pandas
+matplotlib
+pydantic
 ```
 
 For a complete list of dependencies, see `requirements.txt`.
@@ -84,6 +87,12 @@ streamlit run streamlitApp.py
 ```
 
 2. The application will be available at `http://localhost:8501`
+3. Generating Code
+- Select your preferred models in the sidebar
+- Upload any reference files the AI should consider
+- Enter your prompt in the text area (e.g., "Create a function to read CSV files and calculate the average of each column")
+- Click "Generate Response"
+- Provide feedback on the generated code
 
 ## 🏗️ Project Structure
 
@@ -117,13 +126,12 @@ Models can be configured in the initialization parameters or through the web int
 - Support for multiple programming languages
 
 ### Performance Metrics
-- Response Time: Average response time < 2 seconds for queries
-- Memory Usage: Efficient resource management with < 4GB RAM usage
+- Response Time: Average response time <30 seconds for queries and document parsing
+- Memory Usage: Efficient resource management with <4GB RAM usage
 - Accuracy: 
-  * Code Analysis: >90% accuracy in code comprehension tasks
-  * Document Search: >85% relevance in document retrieval
-- Scalability: Handles documents up to 100MB in size
-- Concurrent Users: Supports multiple simultaneous user sessions
+  * Code Analysis: >80% accuracy in code comprehension tasks
+  * Document Search: >90% relevance in document retrieval
+- Scalability: Handles documents up to 200MB in size
 
 ### Feedback System
 - User feedback collection
@@ -136,7 +144,7 @@ Contributions are welcome! Please feel free to submit pull requests.
 
 ## 📝 License
 
-[Add your license information here]
+This project is licensed under the MIT License.
 
 ## 🔗 Additional Resources
 
